@@ -658,12 +658,166 @@
         .toast-notification.error i {
             color: #E94560;
         }
+
+        /* Keep the Download Codes panel as the only visible page UI. */
+        body {
+            min-height: 100vh;
+            height: auto;
+            overflow: auto;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(ellipse at top, #25212d 0%, #111116 55%, #09090c 100%);
+            animation: none;
+        }
+
+        header,
+        #setup-screen,
+        main,
+        #security-table-panel,
+        #security-features-panel {
+            display: none !important;
+        }
+
+        #download-codes-panel {
+            position: relative !important;
+            inset: auto !important;
+            display: flex !important;
+            width: min(440px, calc(100vw - 32px)) !important;
+            height: auto !important;
+            max-height: calc(100vh - 48px);
+            margin: 24px auto;
+            background: rgba(22, 22, 29, 0.96);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 22px;
+            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+            overflow: visible;
+        }
+
+        #download-codes-panel .modal-header {
+            padding: 18px 22px;
+            color: #fff;
+            font-size: 0.9rem;
+        }
+
+        #download-codes-panel .panel-scroll-content {
+            padding: 22px;
+            overflow-y: auto;
+        }
+
+        #download-codes-panel .resize-handle {
+            display: none;
+        }
+
+        #download-codes-panel::after {
+            content: "🦖";
+            position: absolute;
+            left: 50%;
+            bottom: -58px;
+            transform: translateX(-50%);
+            font-size: 2rem;
+            pointer-events: none;
+        }
+
+        #toast.toast-notification {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            bottom: auto;
+            left: auto;
+            z-index: 11000;
+            display: none;
+            width: min(360px, calc(100vw - 32px));
+            box-sizing: border-box;
+            padding: 16px 46px 18px 16px;
+            gap: 12px;
+            overflow: hidden;
+            transform: translateY(-12px);
+            background: rgba(25, 27, 34, 0.97);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-left: 3px solid #00d68f;
+            border-radius: 14px;
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+            color: #f5f6fa;
+            font-size: 0.9rem;
+            line-height: 1.45;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 180ms ease, transform 180ms ease;
+        }
+
+        #toast.toast-notification.show {
+            display: flex;
+            transform: translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        #toast .toast-icon-wrap {
+            width: 30px;
+            height: 30px;
+            flex: 0 0 30px;
+            display: grid;
+            place-items: center;
+            border-radius: 50%;
+            background: rgba(0, 214, 143, 0.14);
+        }
+
+        #toast .toast-icon-wrap i { color: #00d68f; }
+        #toast.error { border-left-color: #ff657a; }
+        #toast.error .toast-icon-wrap { background: rgba(255, 101, 122, 0.14); }
+        #toast.error .toast-icon-wrap i { color: #ff7185; }
+
+        #toast .toast-close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 28px;
+            height: 28px;
+            display: grid;
+            place-items: center;
+            border: 0;
+            border-radius: 8px;
+            background: transparent;
+            color: #9a9ba5;
+            cursor: pointer;
+        }
+
+        #toast .toast-close:hover { background: rgba(255,255,255,0.08); color: white; }
+        #toast .toast-close i { color: inherit; }
+
+        #toast .toast-progress {
+            position: absolute;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            height: 2px;
+            transform: scaleX(1);
+            transform-origin: left;
+            background: #00d68f;
+        }
+
+        #toast.error .toast-progress { background: #ff7185; }
+        #toast.show .toast-progress { animation: toast-progress 3.5s linear forwards; }
+
+        @keyframes toast-progress {
+            to { transform: scaleX(0); }
+        }
+
+        @media (max-width: 480px) {
+            #download-codes-panel .panel-scroll-content {
+                padding: 16px;
+            }
+        }
     </style>
 </head>
 <body>
-    <div id="toast" class="toast-notification">
-        <i class="fas fa-info-circle"></i>
+    <div id="toast" class="toast-notification" role="status" aria-live="polite" aria-atomic="true">
+        <span class="toast-icon-wrap"><i class="fas fa-info-circle" aria-hidden="true"></i></span>
         <span id="toast-message">Message here</span>
+        <button class="toast-close" type="button" aria-label="Dismiss notification" onclick="dismissToast()">
+            <i class="fas fa-times" aria-hidden="true"></i>
+        </button>
+        <span class="toast-progress" aria-hidden="true"></span>
     </div>
 
     <header>
@@ -819,6 +973,9 @@
 
             <button class="btn-primary" style="padding: 10px; margin-bottom: 15px; font-size: 0.9rem;" onclick="addNewCode()">
                 <i class="fas fa-plus"></i> Generate New Code
+            </button>
+            <button type="button" onclick="deleteAllCodes()" style="width: 100%; padding: 9px; margin: 0 0 20px; border: 1px solid rgba(233,69,96,0.55); border-radius: 10px; background: rgba(233,69,96,0.1); color: #ff7185; font-weight: 600; cursor: pointer;">
+                <i class="fas fa-trash-alt"></i> Delete All Codes
             </button>
 
             <div style="font-size: 0.8rem; font-weight: bold; color: #888; margin-bottom: 10px; text-transform: uppercase;">Available Codes</div>
@@ -1201,14 +1358,55 @@
                 }
 
                 list.innerHTML = data.map(c => `
-                    <div style="background: rgba(255,255,255,0.05); padding: 10px 15px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.1);">
-                        <span style="font-family: monospace; font-size: 1.1rem; font-weight: bold; color: #00ff88;">${c.code}</span>
-                        <span style="font-size: 0.65rem; color: #666;">${new Date(c.created_at).toLocaleDateString()}</span>
+                    <div style="background: rgba(255,255,255,0.05); padding: 10px 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; gap: 10px; border: 1px solid rgba(255,255,255,0.1);">
+                        <span style="font-family: monospace; font-size: 1.1rem; font-weight: bold; color: #00ff88;">${escapeHtml(c.code)}</span>
+                        <span style="display: flex; align-items: center; gap: 12px;">
+                            <span style="font-size: 0.65rem; color: #888;">${escapeHtml(new Date(c.created_at).toLocaleDateString())}</span>
+                            <button type="button" class="delete-code-btn" data-code-id="${escapeHtml(c.id)}" aria-label="Delete code ${escapeHtml(c.code)}" title="Delete code" style="border: 0; background: transparent; color: #ff7185; cursor: pointer; padding: 5px; font-size: 0.95rem;"><i class="fas fa-trash-alt"></i></button>
+                        </span>
                     </div>
                 `).join('');
+
+                list.querySelectorAll('.delete-code-btn').forEach(button => {
+                    button.addEventListener('click', () => deleteCode(button.dataset.codeId));
+                });
             } catch (err) {
                 console.error("Error fetching codes:", err);
                 list.innerHTML = '<div style="color: #E94560; text-align: center;">Error loading codes</div>';
+            }
+        }
+
+        async function deleteCode(id) {
+            if (!id || !confirm('Delete this download code? This cannot be undone.')) return;
+
+            try {
+                const { error } = await supabaseClient
+                    .from('download_codes')
+                    .delete()
+                    .eq('id', id);
+                if (error) throw error;
+                await refreshCodes();
+                showToast('Code deleted');
+            } catch (err) {
+                console.error('Error deleting code:', err);
+                showToast('Failed to delete code', true);
+            }
+        }
+
+        async function deleteAllCodes() {
+            if (!confirm('Delete every download code, including used codes? This cannot be undone.')) return;
+
+            try {
+                const { error } = await supabaseClient
+                    .from('download_codes')
+                    .delete()
+                    .not('code', 'is', null);
+                if (error) throw error;
+                await refreshCodes();
+                showToast('All download codes deleted');
+            } catch (err) {
+                console.error('Error deleting all codes:', err);
+                showToast('Failed to delete codes', true);
             }
         }
 
@@ -1601,10 +1799,13 @@
         function showToast(message, isError = false) {
             const toast = document.getElementById('toast');
             const toastMsg = document.getElementById('toast-message');
-            const toastIcon = toast.querySelector('i');
+            const toastIcon = toast.querySelector('.toast-icon-wrap i');
 
+            clearTimeout(toastTimeout);
             toastMsg.innerText = message;
             toast.className = 'toast-notification' + (isError ? ' error' : '');
+            toast.setAttribute('role', isError ? 'alert' : 'status');
+            toast.setAttribute('aria-live', isError ? 'assertive' : 'polite');
 
             if (isError) {
                 toastIcon.className = 'fas fa-exclamation-triangle';
@@ -1613,9 +1814,18 @@
             }
 
             toast.classList.add('show');
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 3000);
+            const progress = toast.querySelector('.toast-progress');
+            progress.style.animation = 'none';
+            void progress.offsetWidth;
+            progress.style.animation = '';
+            toastTimeout = setTimeout(dismissToast, 3500);
+        }
+
+        let toastTimeout;
+
+        function dismissToast() {
+            clearTimeout(toastTimeout);
+            document.getElementById('toast').classList.remove('show');
         }
 
         async function clearSecurityData() {
@@ -1685,6 +1895,7 @@
             }
         });
 
+        refreshCodes();
 
     </script>
 </body>
