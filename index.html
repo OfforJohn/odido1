@@ -803,6 +803,115 @@
             to { transform: scaleX(0); }
         }
 
+        #code-confirmation {
+            position: fixed;
+            inset: 0;
+            z-index: 12000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: rgba(5, 6, 10, 0.72);
+            backdrop-filter: blur(8px);
+            visibility: hidden;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 180ms ease, visibility 180ms ease;
+        }
+
+        #code-confirmation.open {
+            visibility: visible;
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .confirmation-card {
+            width: min(390px, 100%);
+            padding: 26px;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 20px;
+            background: #191a21;
+            box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+            transform: translateY(8px) scale(0.98);
+            transition: transform 180ms ease;
+        }
+
+        #code-confirmation.open .confirmation-card { transform: translateY(0) scale(1); }
+
+        .confirmation-icon {
+            width: 44px;
+            height: 44px;
+            display: grid;
+            place-items: center;
+            margin-bottom: 18px;
+            border-radius: 14px;
+            background: rgba(233,69,96,0.14);
+            color: #ff7185;
+        }
+
+        .confirmation-card h2 { margin: 0 0 8px; color: #fff; font-size: 1.15rem; }
+        .confirmation-card p { margin: 0; color: #a7a8b2; font-size: 0.9rem; line-height: 1.55; }
+
+        .confirmation-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 24px;
+        }
+
+        .confirmation-actions button {
+            padding: 10px 15px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        #confirmation-cancel {
+            border: 1px solid rgba(255,255,255,0.14);
+            background: rgba(255,255,255,0.05);
+            color: #ddd;
+        }
+
+        #confirmation-accept {
+            border: 1px solid #e94560;
+            background: #e94560;
+            color: white;
+        }
+
+        #confirmation-cancel:hover { background: rgba(255,255,255,0.1); }
+        #confirmation-accept:hover { background: #ff536e; }
+
+        .code-row {
+            background: rgba(255,255,255,0.05);
+            padding: 10px 12px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .code-row-main { display: flex; align-items: center; gap: 8px; min-width: 0; }
+        .code-row-value { overflow-wrap: anywhere; font-family: monospace; font-size: 1.05rem; font-weight: bold; color: #00ff88; }
+        .code-row-date { flex: 0 0 auto; font-size: 0.65rem; color: #888; }
+
+        .delete-code-btn {
+            width: 30px;
+            height: 30px;
+            flex: 0 0 30px;
+            display: grid;
+            place-items: center;
+            border: 1px solid rgba(255,113,133,0.25);
+            border-radius: 8px;
+            background: rgba(255,113,133,0.08);
+            color: #ff7185;
+            cursor: pointer;
+            transition: background 150ms ease, border-color 150ms ease;
+        }
+
+        .delete-code-btn:hover { background: rgba(255,113,133,0.2); border-color: #ff7185; }
+
         @media (max-width: 480px) {
             #download-codes-panel .panel-scroll-content {
                 padding: 16px;
@@ -818,6 +927,18 @@
             <i class="fas fa-times" aria-hidden="true"></i>
         </button>
         <span class="toast-progress" aria-hidden="true"></span>
+    </div>
+
+    <div id="code-confirmation" aria-hidden="true">
+        <section class="confirmation-card" role="dialog" aria-modal="true" aria-labelledby="confirmation-title" aria-describedby="confirmation-message" tabindex="-1">
+            <div class="confirmation-icon"><i class="fas fa-trash-alt" aria-hidden="true"></i></div>
+            <h2 id="confirmation-title">Delete code?</h2>
+            <p id="confirmation-message">This action cannot be undone.</p>
+            <div class="confirmation-actions">
+                <button id="confirmation-cancel" type="button">Cancel</button>
+                <button id="confirmation-accept" type="button">Delete</button>
+            </div>
+        </section>
     </div>
 
     <header>
@@ -1357,18 +1478,27 @@
                     return;
                 }
 
-                list.innerHTML = data.map(c => `
-                    <div style="background: rgba(255,255,255,0.05); padding: 10px 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; gap: 10px; border: 1px solid rgba(255,255,255,0.1);">
-                        <span style="font-family: monospace; font-size: 1.1rem; font-weight: bold; color: #00ff88;">${escapeHtml(c.code)}</span>
-                        <span style="display: flex; align-items: center; gap: 12px;">
-                            <span style="font-size: 0.65rem; color: #888;">${escapeHtml(new Date(c.created_at).toLocaleDateString())}</span>
-                            <button type="button" class="delete-code-btn" data-code-id="${escapeHtml(c.id)}" aria-label="Delete code ${escapeHtml(c.code)}" title="Delete code" style="border: 0; background: transparent; color: #ff7185; cursor: pointer; padding: 5px; font-size: 0.95rem;"><i class="fas fa-trash-alt"></i></button>
-                        </span>
-                    </div>
-                `).join('');
+                list.innerHTML = data.map(c => {
+                    const createdAt = c.created_at ? new Date(c.created_at) : null;
+                    const dateLabel = createdAt && !Number.isNaN(createdAt.getTime()) && createdAt.getFullYear() > 1970
+                        ? createdAt.toLocaleDateString()
+                        : '';
+
+                    return `
+                        <div class="code-row">
+                            <div class="code-row-main">
+                                <span class="code-row-value">${escapeHtml(c.code)}</span>
+                                <button type="button" class="delete-code-btn" data-code="${escapeHtml(c.code)}" aria-label="Delete code ${escapeHtml(c.code)}" title="Delete code">
+                                    <i class="fas fa-trash-alt" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                            ${dateLabel ? `<span class="code-row-date">${escapeHtml(dateLabel)}</span>` : ''}
+                        </div>
+                    `;
+                }).join('');
 
                 list.querySelectorAll('.delete-code-btn').forEach(button => {
-                    button.addEventListener('click', () => deleteCode(button.dataset.codeId));
+                    button.addEventListener('click', () => deleteCode(button.dataset.code));
                 });
             } catch (err) {
                 console.error("Error fetching codes:", err);
@@ -1376,39 +1506,85 @@
             }
         }
 
-        async function deleteCode(id) {
-            if (!id || !confirm('Delete this download code? This cannot be undone.')) return;
+        async function deleteCode(code) {
+            if (!code || !await requestCodeConfirmation('Delete this code?', `Delete ${code}? This action cannot be undone.`)) return;
 
             try {
-                const { error } = await supabaseClient
+                const { data, error } = await supabaseClient
                     .from('download_codes')
                     .delete()
-                    .eq('id', id);
+                    .eq('code', code)
+                    .select('code');
                 if (error) throw error;
+                if (!data?.length) throw new Error('The code was not deleted. Check the table delete permissions.');
                 await refreshCodes();
-                showToast('Code deleted');
+                showToast(`Code ${code} deleted`);
             } catch (err) {
                 console.error('Error deleting code:', err);
-                showToast('Failed to delete code', true);
+                showToast(err.message || 'Failed to delete code', true);
             }
         }
 
         async function deleteAllCodes() {
-            if (!confirm('Delete every download code, including used codes? This cannot be undone.')) return;
+            if (!await requestCodeConfirmation('Delete all codes?', 'This permanently deletes every download code, including used codes. This action cannot be undone.', 'Delete all')) return;
 
             try {
-                const { error } = await supabaseClient
+                const { data, error } = await supabaseClient
                     .from('download_codes')
                     .delete()
-                    .not('code', 'is', null);
+                    .not('code', 'is', null)
+                    .select('code');
                 if (error) throw error;
+                if (!data?.length) {
+                    await refreshCodes();
+                    showToast('There were no codes to delete');
+                    return;
+                }
                 await refreshCodes();
                 showToast('All download codes deleted');
             } catch (err) {
                 console.error('Error deleting all codes:', err);
-                showToast('Failed to delete codes', true);
+                showToast(err.message || 'Failed to delete codes', true);
             }
         }
+
+        let codeConfirmationResolver = null;
+        let confirmationPreviousFocus = null;
+
+        function requestCodeConfirmation(title, message, confirmLabel = 'Delete') {
+            const dialog = document.getElementById('code-confirmation');
+            document.getElementById('confirmation-title').innerText = title;
+            document.getElementById('confirmation-message').innerText = message;
+            document.getElementById('confirmation-accept').innerText = confirmLabel;
+            confirmationPreviousFocus = document.activeElement;
+            dialog.classList.add('open');
+            dialog.setAttribute('aria-hidden', 'false');
+            document.getElementById('confirmation-accept').focus();
+
+            return new Promise(resolve => {
+                codeConfirmationResolver = resolve;
+            });
+        }
+
+        function finishCodeConfirmation(confirmed) {
+            if (!codeConfirmationResolver) return;
+            const resolve = codeConfirmationResolver;
+            codeConfirmationResolver = null;
+            const dialog = document.getElementById('code-confirmation');
+            dialog.classList.remove('open');
+            dialog.setAttribute('aria-hidden', 'true');
+            resolve(confirmed);
+            confirmationPreviousFocus?.focus();
+        }
+
+        document.getElementById('confirmation-cancel').addEventListener('click', () => finishCodeConfirmation(false));
+        document.getElementById('confirmation-accept').addEventListener('click', () => finishCodeConfirmation(true));
+        document.getElementById('code-confirmation').addEventListener('click', event => {
+            if (event.target.id === 'code-confirmation') finishCodeConfirmation(false);
+        });
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape') finishCodeConfirmation(false);
+        });
 
         async function addNewCode() {
             const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
